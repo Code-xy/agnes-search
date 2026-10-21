@@ -128,8 +128,7 @@ object Store {
         write(K_USAGE, next, UsageStat.serializer())
     }
 
-    companion object {
-        fun newId(): String = "s" + System.currentTimeMillis().toString(36) +
-            Integer.toHexString((Math.random() * 0xFFFF).toInt())
-    }
+    /** 生成会话 id。 */
+    fun newId(): String = "s" + System.currentTimeMillis().toString(36) +
+        Integer.toHexString((Math.random() * 0xFFFF).toInt())
 }

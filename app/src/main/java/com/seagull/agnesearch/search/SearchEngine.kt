@@ -270,16 +270,18 @@ object SearchEngine {
     private fun decodeBody(bytes: ByteArray?, contentType: String?): String? {
         if (bytes == null || bytes.isEmpty()) return null
         val lower = (contentType ?: "").lowercase()
-        val charset = when {
-            lower.contains("gbk") || lower.contains("gb2312") -> Charsets.forName("GBK")
-            lower.contains("charset=") -> try {
-                Charsets.forName(lower.substringAfter("charset=").trim().trim('"').substringBefore(';'))
-            } catch (e: Exception) {
-                Charsets.UTF_8
+        val cs = try {
+            when {
+                lower.contains("charset=") -> java.nio.charset.Charset.forName(
+                    lower.substringAfter("charset=").trim().trim('"').substringBefore(';').trim()
+                )
+                lower.contains("gbk") || lower.contains("gb2312") -> java.nio.charset.Charset.forName("GBK")
+                else -> Charsets.UTF_8
             }
-            else -> Charsets.UTF_8
+        } catch (e: Exception) {
+            Charsets.UTF_8
         }
-        return String(bytes, charset)
+        return String(bytes, cs)
     }
 
     fun parseDoc(html: String, base: String): Document = Jsoup.parse(html, base)
