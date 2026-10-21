@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.seagull.agnesearch.core.Chat
 import com.seagull.agnesearch.core.Creation
 import com.seagull.agnesearch.core.Store
+import com.seagull.agnesearch.ui.components.ConfirmDialog
 import com.seagull.agnesearch.ui.components.EmptyState
 import com.seagull.agnesearch.ui.components.Pill
 import com.seagull.agnesearch.ui.components.RemoteImage
@@ -59,6 +60,7 @@ fun HistoryScreen(onOpenChat: (String) -> Unit) {
     var keyword by remember { mutableStateOf("") }
     var tab by remember { mutableStateOf("chat") }
     var viewing by remember { mutableStateOf<Creation?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
 
     val myChats = chats.filter { c ->
         keyword.isBlank() || c.title.contains(keyword, true) ||
@@ -90,11 +92,9 @@ fun HistoryScreen(onOpenChat: (String) -> Unit) {
             Pill("图像", tab == "image") { tab = "image" }
             Pill("视频", tab == "video") { tab = "video" }
             Spacer(Modifier.weight(1f))
-            if (tab == "chat" && chats.isNotEmpty()) {
-                Pill("清空") { Store.clearChats() }
-            }
-            if (tab != "chat" && creations.any { it.kind == tab }) {
-                Pill("清空") { Store.clearCreations() }
+            val canClear = if (tab == "chat") chats.isNotEmpty() else creations.any { it.kind == tab }
+            if (canClear) {
+                Pill("清空") { confirmClear = true }
             }
         }
 
@@ -145,6 +145,21 @@ fun HistoryScreen(onOpenChat: (String) -> Unit) {
     val v = viewing
     if (v != null) {
         ImageViewerDialog(c = v, onClose = { viewing = null })
+    }
+
+    if (confirmClear) {
+        val isChat = tab == "chat"
+        val count = if (isChat) chats.size else creations.count { it.kind == tab }
+        ConfirmDialog(
+            title = if (isChat) "清空所有会话" else "清空所有" + (if (tab == "image") "图像" else "视频") + "记录",
+            message = "将删除 " + count + " 条记录，删掉就找不回来了。",
+            confirmText = "全部删除",
+            onConfirm = {
+                if (isChat) Store.clearChats() else Store.clearCreations()
+                confirmClear = false
+            },
+            onDismiss = { confirmClear = false },
+        )
     }
 }
 

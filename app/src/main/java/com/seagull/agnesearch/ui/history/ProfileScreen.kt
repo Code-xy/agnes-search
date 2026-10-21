@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.seagull.agnesearch.BuildConfig
 import com.seagull.agnesearch.core.Store
+import com.seagull.agnesearch.ui.components.ConfirmDialog
 import com.seagull.agnesearch.ui.components.GlassCard
 import com.seagull.agnesearch.ui.components.LetterAvatar
 import com.seagull.agnesearch.ui.components.SectionTitle
@@ -57,6 +58,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
     val chats by Store.chats.collectAsState()
     val creations by Store.creations.collectAsState()
     var showAbout by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf<PendingConfirm?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -144,13 +146,23 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
                 Column {
                     MenuRow(Icons.Filled.Settings, "接口设置", "端点 / Key / 模型 / 参数", onOpenSettings)
                     ThinDivider()
-                    MenuRow(Icons.Filled.Refresh, "清空用量统计", "只清计数，不动历史") {
-                        Store.resetUsage()
+                    MenuRow(Icons.Filled.Refresh, "清空用量统计", "只清计数，不动会话与创作") {
+                        confirm = PendingConfirm(
+                            "清空用量统计",
+                            "只会把「对话消息 / 生成图像 / 生成视频 / Token」这些计数清零，会话和创作记录都保留。",
+            "确认清空",
+                        ) { Store.resetUsage() }
                     }
                     ThinDivider()
                     MenuRow(Icons.Filled.Delete, "清空全部记录", chats.size.toString() + " 会话 · " + creations.size + " 创作") {
-                        Store.clearChats()
-                        Store.clearCreations()
+                        confirm = PendingConfirm(
+                            "清空全部记录",
+                            "将删除 " + chats.size + " 个会话和 " + creations.size + " 条创作记录，删掉就找不回来了。",
+            "全部删除",
+                        ) {
+                            Store.clearChats()
+                            Store.clearCreations()
+                        }
                     }
                     ThinDivider()
                     MenuRow(Icons.Filled.Info, "关于", "v" + BuildConfig.VERSION_NAME) {
@@ -192,6 +204,20 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
                 }
             }
         }
+    }
+
+    val pending = confirm
+    if (pending != null) {
+        ConfirmDialog(
+            title = pending.title,
+            message = pending.message,
+            confirmText = pending.confirmText,
+            onConfirm = {
+                pending.action()
+                confirm = null
+            },
+            onDismiss = { confirm = null },
+        )
     }
 
     if (showAbout) {
@@ -260,3 +286,11 @@ private fun compact(n: Long): String {
         else -> n.toString()
     }
 }
+
+/** 待确认的危险操作。 */
+private data class PendingConfirm(
+    val title: String,
+    val message: String,
+    val confirmText: String,
+    val action: () -> Unit,
+)

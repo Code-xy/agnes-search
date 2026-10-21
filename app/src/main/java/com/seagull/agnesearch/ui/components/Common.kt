@@ -347,6 +347,33 @@ fun LetterAvatar(letter: String, size: Int = 52) {
     }
 }
 
+/** 危险操作确认弹窗。 */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String = "确认清空",
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val br = brand
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, color = br.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp) },
+        text = { Text(message, color = br.textSecondary, fontSize = 13.sp) },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onConfirm) {
+                Text(confirmText, color = br.danger, fontWeight = FontWeight.Medium)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("取消", color = br.textSecondary)
+            }
+        },
+    )
+}
+
 /** 卡片内的小分隔线。 */
 @Composable
 fun ThinDivider() {
