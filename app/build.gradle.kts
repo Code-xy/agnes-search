@@ -35,8 +35,8 @@ android {
         applicationId = "com.seagull.agnesearch"
         minSdk = 24
         targetSdk = 35
-        versionCode = pVCode?.toIntOrNull() ?: 6
-        versionName = pVName ?: "1.2.3"
+        versionCode = pVCode?.toIntOrNull() ?: 7
+        versionName = pVName ?: "1.2.4"
         vectorDrawables.useSupportLibrary = true
 
         if (pAbi.isNotEmpty()) {

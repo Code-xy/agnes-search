@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.FileProvider
 import com.seagull.agnesearch.core.Attachment
 import com.seagull.agnesearch.ui.theme.brand
 import com.seagull.agnesearch.util.FilePicker
@@ -45,6 +46,7 @@ import com.seagull.agnesearch.util.ImagePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 统一的内容来源：拍照 / 相册 / 任意文件（代码、文本、配置…）。
@@ -63,11 +65,13 @@ fun rememberMediaPicker(
     quality: Int = 85,
     onImage: (String) -> Unit,
     onFile: (Attachment) -> Unit,
+    onNotice: (String) -> Unit = {},
 ): MediaPicker {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val latestImage by rememberUpdatedState(onImage)
     val latestFile by rememberUpdatedState(onFile)
+    val latestNotice by rememberUpdatedState(onNotice)
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val gallery = rememberLauncherForActivityResult(
@@ -81,15 +85,22 @@ fun rememberMediaPicker(
         }
     }
 
-    // 用 TakePicturePreview：直接拿系统相机返回的 Bitmap。
-    // 之前用 TakePicture + EXTRA_OUTPUT，部分 ROM（MIUI 相机）不往里写文件，拿到 0 字节。
+    // TakePicture + FileProvider：MIUI 相机这种模式下拍完**自动返回**，
+    // 不会像 TakePicturePreview 那样停在预览页等手动确认。
     val camera = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bmp: android.graphics.Bitmap? ->
-        if (bmp != null) {
-            scope.launch {
-                val d = withContext(Dispatchers.IO) { ImagePicker.bitmapToDataUri(bmp, maxDim, quality) }
-                if (d != null) latestImage(d)
+        contract = ActivityResultContracts.TakePicture()
+    ) { ok: Boolean ->
+        val uri = cameraUri
+        if (!ok || uri == null) {
+            // 用户取消拍照，不用提示
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            val d = withContext(Dispatchers.IO) { ImagePicker.toDataUri(ctx, uri, maxDim, quality) }
+            if (d != null) {
+                latestImage(d)
+            } else {
+                latestNotice("照片没拿到（相机没写入文件），改用「相册」选图试试")
             }
         }
     }
@@ -127,9 +138,17 @@ fun rememberMediaPicker(
         },
         takePhoto = {
             try {
-                camera.launch(null)
+                val dir = File(ctx.cacheDir, "camera")
+                if (!dir.exists()) dir.mkdirs()
+                // 清掉上一轮残留
+                dir.listFiles()?.forEach { it.delete() }
+                val f = File(dir, "shot_" + System.currentTimeMillis() + ".jpg")
+                f.createNewFile()
+                val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", f)
+                cameraUri = uri
+                camera.launch(uri)
             } catch (e: Exception) {
-                // 极少数 ROM 没有可用相机，静默失败
+                latestNotice("启动相机失败：" + (e.message ?: e.javaClass.simpleName))
             }
         },
     )
@@ -162,8 +181,8 @@ fun ImageSourceSheet(
             Spacer(Modifier.height(14.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SourceOption("相册", "最快，推荐", Icons.Filled.List, Modifier.weight(1f), onGallery)
                 SourceOption("拍照", "系统相机", Icons.Filled.Face, Modifier.weight(1f), onCamera)
-                SourceOption("相册", "已有图片", Icons.Filled.List, Modifier.weight(1f), onGallery)
                 if (onFile != null) {
                     SourceOption("文件", "代码/文本", Icons.Filled.Create, Modifier.weight(1f), onFile)
                 }
@@ -172,7 +191,8 @@ fun ImageSourceSheet(
             Spacer(Modifier.height(12.dp))
             Text(
                 "支持 .py .kt .java .js .json .md .txt .log .yml .sql .sh 等文本类文件（≤200KB）；" +
-                    "apk、zip、pdf、音视频不在接口支持范围内。",
+                    "apk、zip、pdf、音视频不在接口支持范围内。" +
+                    "\n拍照要等系统相机冷启动（首次 1-3 秒），拍完会自动回到这里。",
                 color = br.textSecondary,
                 fontSize = 10.sp,
             )

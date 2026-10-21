@@ -46,6 +46,18 @@ class ChatViewModel : ViewModel() {
     var error by mutableStateOf("")
         private set
 
+    /** 非错误的轻提示（例如拍照失败建议改用相册） */
+    var notice by mutableStateOf("")
+        private set
+
+    fun showNotice(msg: String) {
+        notice = msg
+    }
+
+    fun clearNotice() {
+        notice = ""
+    }
+
     private var job: Job? = null
 
     fun current(): Chat? = Store.chats.value.firstOrNull { it.id == currentId }

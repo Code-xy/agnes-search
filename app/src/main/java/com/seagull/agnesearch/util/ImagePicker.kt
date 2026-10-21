@@ -3,41 +3,69 @@ package com.seagull.agnesearch.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.net.Uri
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 /**
- * 相册图片 → Data URI（图像接口支持 data:image/...;base64,xxx 直接送）。
- * 先缩到长边 maxDim、JPEG 质量 85，控制请求体积。
+ * 相册 / 相机图片 → Data URI。
+ *
+ * 关键：**两段式解码**。先只读边界拿到原始尺寸，算出 inSampleSize 再真正解码，
+ * 避免 4000x3000 原图直接进内存（那会让 App 明显卡顿甚至 OOM）。
  */
 object ImagePicker {
 
     fun toDataUri(ctx: Context, uri: Uri, maxDim: Int = 1280, quality: Int = 85): String? {
         return try {
-            val input: InputStream = ctx.contentResolver.openInputStream(uri) ?: return null
-            val raw = input.use { BitmapFactory.decodeStream(it) } ?: return null
-            val scaled = scale(raw, maxDim)
-            val bos = ByteArrayOutputStream()
-            scaled.compress(Bitmap.CompressFormat.JPEG, quality, bos)
-            val b64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
-            "data:image/jpeg;base64," + b64
+            val resolver = ctx.contentResolver
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input, Rect(), bounds)
+            }
+            val sample = calcSample(bounds.outWidth, bounds.outHeight, maxDim)
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val bmp = resolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input, null, opts)
+            } ?: return null
+            compressToDataUri(bmp, quality)
+        } catch (e: OutOfMemoryError) {
+            null
         } catch (e: Exception) {
             null
         }
     }
 
-    /** 相机缩略图（TakePicturePreview 返回 Bitmap）转 Data URI。 */
+    /** 相机返回的 Bitmap（可能很大）转 Data URI。 */
     fun bitmapToDataUri(bitmap: Bitmap, maxDim: Int = 1280, quality: Int = 88): String? {
         return try {
-            val scaled = scale(bitmap, maxDim)
-            val bos = ByteArrayOutputStream()
-            scaled.compress(Bitmap.CompressFormat.JPEG, quality, bos)
-            "data:image/jpeg;base64," + Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
+            compressToDataUri(bitmap, quality, maxDim)
+        } catch (e: OutOfMemoryError) {
+            null
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun compressToDataUri(src: Bitmap, quality: Int, maxDim: Int = 0): String? {
+        val out = if (maxDim > 0) scale(src, maxDim) else src
+        val bos = ByteArrayOutputStream()
+        out.compress(Bitmap.CompressFormat.JPEG, quality, bos)
+        val b64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
+        return "data:image/jpeg;base64," + b64
+    }
+
+    /** 原图长边 / 目标长边，向上取 2 的幂。 */
+    private fun calcSample(width: Int, height: Int, maxDim: Int): Int {
+        if (width <= 0 || height <= 0) return 1
+        val longSide = if (width > height) width else height
+        var sample = 1
+        while (longSide / (sample * 2) >= maxDim) sample *= 2
+        return sample.coerceAtLeast(1)
     }
 
     private fun scale(src: Bitmap, maxDim: Int): Bitmap {
@@ -53,5 +81,10 @@ object ImagePicker {
         } catch (e: Exception) {
             src
         }
+    }
+
+    /** 兼容旧调用。 */
+    fun toDataUriSimple(ctx: Context, uri: Uri, maxDim: Int = 1280, quality: Int = 85): String? {
+        return toDataUri(ctx, uri, maxDim, quality)
     }
 }

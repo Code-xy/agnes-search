@@ -79,7 +79,11 @@ fun CreateScreen(
     // 一个来源选择器伺候所有入口（拍照 / 相册）
     var pending by remember { mutableStateOf<((String) -> Unit)?>(null) }
     var showSheet by remember { mutableStateOf(false) }
-    val media = rememberMediaPicker(onImage = { d -> pending?.invoke(d) }, onFile = { })
+    val media = rememberMediaPicker(
+        onImage = { d -> pending?.invoke(d) },
+        onFile = { },
+        onNotice = { m -> vm.setImage { it.copy(error = m) } },
+    )
 
     fun pick(handler: (String) -> Unit) {
         pending = handler

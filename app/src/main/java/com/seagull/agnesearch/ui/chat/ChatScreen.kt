@@ -95,6 +95,7 @@ fun ChatScreen(
         quality = 84,
         onImage = { d -> vm.addImage(d) },
         onFile = { a -> vm.addFile(a) },
+        onNotice = { m -> vm.showNotice(m) },
     )
 
     val lastIndex = messages.size + (if (vm.streaming) 1 else 0)
@@ -190,6 +191,25 @@ fun ChatScreen(
                     fontSize = 11.sp,
                     modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
                 )
+            }
+            if (vm.notice.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                        .background(br.chipBg, RoundedCornerShape(10.dp))
+                        .clickable { vm.clearNotice() }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        vm.notice,
+                        color = br.chipText,
+                        fontSize = 11.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("知道了", color = br.accent, fontSize = 11.sp)
+                }
             }
 
             if (vm.pendingFiles.isNotEmpty()) {
