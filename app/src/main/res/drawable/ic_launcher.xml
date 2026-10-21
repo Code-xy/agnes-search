@@ -3,8 +3,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
             <gradient
                 android:startX="0" android:startY="0"
@@ -16,13 +15,15 @@
         </aapt:attr>
     </path>
     <path
-        android:strokeWidth="7"
-        android:strokeColor="#FFFFFFFF"
-        android:fillColor="#00000000"
-        android:pathData="M49,32 a17,17 0 1,0 0.1,0" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,32 L62,32 A11,11 0 0 1 73,43 L73,58 A11,11 0 0 1 62,69 L52,69 L40,79 L40,69 L32,69 A11,11 0 0 1 21,58 L21,43 A11,11 0 0 1 32,32 Z" />
     <path
-        android:strokeWidth="7"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:pathData="M62,62 L78,78" />
+        android:fillColor="#FF6D8BFF"
+        android:pathData="M34,46 L60,46 L60,50 L34,50 Z" />
+    <path
+        android:fillColor="#FF6D8BFF"
+        android:pathData="M34,55 L52,55 L52,59 L34,59 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M82,26 L85,34 L93,37 L85,40 L82,48 L79,40 L71,37 L79,34 Z" />
 </vector>
