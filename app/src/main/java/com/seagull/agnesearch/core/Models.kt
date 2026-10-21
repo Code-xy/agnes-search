@@ -8,35 +8,32 @@ data class AppSettings(
     val baseUrl: String = DEFAULT_BASE_URL,
     val apiKey: String = "",
     val model: String = DEFAULT_MODEL,
-    /** auto | bing | duckduckgo | searxng */
-    val searchProvider: String = "auto",
-    val searxUrl: String = "",
-    /** Agent 最多几轮工具调用 */
-    val maxRounds: Int = 3,
-    /** 每次搜索取几条结果 */
-    val maxResults: Int = 8,
-    /** 抓取正文的页面数（0 = 不抓） */
-    val fetchPages: Int = 3,
-    val temperature: Double = 0.3,
+
+    // ── 对话行为 ──
+    val temperature: Double = 0.7,
     val maxTokens: Int = 4096,
     /** 是否开启 Thinking（chat_template_kwargs.enable_thinking） */
     val thinking: Boolean = false,
+    /** 每次请求带上多少条历史消息 */
+    val contextLimit: Int = 20,
     val systemPrompt: String = "",
-    /** system | light | dark */
+    /** 流式输出 */
+    val stream: Boolean = true,
+
     val themeMode: String = "system",
     /** 自定义代理，例如 http://127.0.0.1:7890，留空直连 */
     val proxyUrl: String = "",
-    /** 回答语言 */
+    /** zh | en，控制内置系统提示的语言 */
     val language: String = "zh",
 
-    // ── 图像生成 ──
+    // ── 图像 ──
     val imageModel: String = "agnes-image-2.5-flash",
-    /** 档位式尺寸：1K / 2K / 3K / 4K（2.0 模型走精确尺寸时自动转换） */
+    /** 档位式尺寸：1K / 2K / 3K / 4K（2.0 模型走精确尺寸时自动换算） */
     val imageSize: String = "1K",
     val imageRatio: String = "1:1",
     val autoSaveImage: Boolean = true,
 
-    // ── 视频生成 ──
+    // ── 视频 ──
     val videoModel: String = "agnes-video-2.5",
     val videoMode: String = "text",
     val videoSize: String = "720P",
@@ -49,8 +46,8 @@ data class AppSettings(
         const val DEFAULT_MODEL = "agnes-2.5-flash"
 
         val MODELS = listOf(
-            "agnes-2.5-flash",
             "agnes-3.0-flash",
+            "agnes-2.5-flash",
             "agnes-2.5-pro",
             "agnes-2.5-pro-beta",
         )
@@ -74,54 +71,33 @@ data class AppSettings(
     }
 }
 
-/** 搜索命中的一条来源。 */
+/** 聊天里的一条消息。 */
 @Serializable
-data class SourceItem(
-    val title: String,
-    val url: String,
-    val snippet: String = "",
-    val engine: String = "",
-    /** 抓取到的正文（前若干字符） */
+data class ChatMessage(
+    val id: String = "",
+    /** user | assistant */
+    val role: String = "user",
     val content: String = "",
-)
-
-/** 一次搜索会话（历史记录）。 */
-@Serializable
-data class Session(
-    val id: String,
-    val query: String,
-    val answer: String = "",
-    val sources: List<SourceItem> = emptyList(),
-    val steps: List<String> = emptyList(),
+    /** data URI 或公网 URL，多模态图像输入 */
+    val images: List<String> = emptyList(),
     val model: String = "",
-    val createdAt: Long = 0L,
-    val elapsedMs: Long = 0L,
     val promptTokens: Int = 0,
     val completionTokens: Int = 0,
+    val elapsedMs: Long = 0L,
+    val error: Boolean = false,
+    val createdAt: Long = 0L,
+)
+
+/** 一个会话。 */
+@Serializable
+data class Chat(
+    val id: String,
+    val title: String = "新对话",
+    val messages: List<ChatMessage> = emptyList(),
+    val model: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
     val starred: Boolean = false,
-)
-
-/** 本地累计用量。 */
-@Serializable
-data class UsageStat(
-    val calls: Int = 0,
-    val promptTokens: Long = 0L,
-    val completionTokens: Long = 0L,
-    val searches: Int = 0,
-    val images: Int = 0,
-    val videos: Int = 0,
-    val firstUseAt: Long = 0L,
-)
-
-/** 会话内的消息（发给模型的原始结构）。 */
-@Serializable
-data class ChatTurn(
-    val role: String,
-    val content: String = "",
-    /** assistant 发起工具调用时保留原始 tool_calls JSON 文本 */
-    val toolCallsJson: String = "",
-    val toolCallId: String = "",
-    val toolName: String = "",
 )
 
 /** 一次图像 / 视频生成记录。 */
@@ -132,7 +108,7 @@ data class Creation(
     val kind: String,
     val prompt: String,
     val model: String,
-    /** queued | running | done | failed */
+    /** queued | running | in_progress | done | failed */
     val status: String = "queued",
     val url: String = "",
     val localPath: String = "",
@@ -146,4 +122,16 @@ data class Creation(
     val elapsedMs: Long = 0L,
     val videoId: String = "",
     val starred: Boolean = false,
+)
+
+/** 本地累计用量。 */
+@Serializable
+data class UsageStat(
+    val calls: Int = 0,
+    val messages: Int = 0,
+    val promptTokens: Long = 0L,
+    val completionTokens: Long = 0L,
+    val images: Int = 0,
+    val videos: Int = 0,
+    val firstUseAt: Long = 0L,
 )

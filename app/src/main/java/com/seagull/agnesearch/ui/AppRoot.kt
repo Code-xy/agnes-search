@@ -17,8 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,48 +39,48 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.ui.components.BrandBackground
+import com.seagull.agnesearch.ui.chat.ChatScreen
+import com.seagull.agnesearch.ui.chat.ChatViewModel
 import com.seagull.agnesearch.ui.create.CreateScreen
 import com.seagull.agnesearch.ui.create.CreateViewModel
 import com.seagull.agnesearch.ui.history.HistoryScreen
 import com.seagull.agnesearch.ui.history.ProfileScreen
 import com.seagull.agnesearch.ui.history.SettingsScreen
-import com.seagull.agnesearch.ui.search.HomeScreen
-import com.seagull.agnesearch.ui.search.SearchViewModel
 import com.seagull.agnesearch.ui.theme.AgnesTheme
 import com.seagull.agnesearch.ui.theme.brand
 
-private val TABS = listOf("home", "create", "history", "profile")
+private val TABS = listOf("chat", "create", "history", "profile")
 
 @Composable
 fun AppRoot() {
     val settings by Store.settings.collectAsState()
     AgnesTheme(mode = settings.themeMode) {
         val nav = rememberNavController()
-        val vm: SearchViewModel = viewModel()
+        val chatVm: ChatViewModel = viewModel()
         val cvm: CreateViewModel = viewModel()
         val entry by nav.currentBackStackEntryAsState()
-        val route = entry?.destination?.route ?: "home"
+        val route = entry?.destination?.route ?: "chat"
         val showBar = TABS.contains(route)
 
         BrandBackground {
             NavHost(
                 navController = nav,
-                startDestination = "home",
+                startDestination = "chat",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = if (showBar) 84.dp else 0.dp),
             ) {
-                composable("home") {
-                    HomeScreen(vm = vm, onOpenSettings = { nav.navigate("settings") })
+                composable("chat") {
+                    ChatScreen(vm = chatVm, onOpenSettings = { nav.navigate("settings") })
                 }
                 composable("create") {
                     CreateScreen(vm = cvm, onOpenSettings = { nav.navigate("settings") })
                 }
                 composable("history") {
-                    HistoryScreen(onOpen = { s ->
-                        vm.showSession(s)
-                        nav.navigate("home") {
-                            popUpTo("home") { inclusive = true }
+                    HistoryScreen(onOpenChat = { id ->
+                        chatVm.open(id)
+                        nav.navigate("chat") {
+                            popUpTo("chat") { inclusive = true }
                             launchSingleTop = true
                         }
                     })
@@ -99,7 +99,7 @@ fun AppRoot() {
                     onSelect = { r ->
                         if (r != route) {
                             nav.navigate(r) {
-                                popUpTo("home") { inclusive = r == "home" }
+                                popUpTo("chat") { inclusive = r == "chat" }
                                 launchSingleTop = true
                             }
                         }
@@ -128,7 +128,7 @@ private fun BottomBar(
             .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TabItem("搜索", Icons.Filled.Search, route == "home") { onSelect("home") }
+        TabItem("对话", Icons.Filled.MailOutline, route == "chat") { onSelect("chat") }
         TabItem("创作", Icons.Filled.Create, route == "create") { onSelect("create") }
         TabItem("历史", Icons.AutoMirrored.Filled.List, route == "history") { onSelect("history") }
         TabItem("我的", Icons.Filled.Person, route == "profile") { onSelect("profile") }

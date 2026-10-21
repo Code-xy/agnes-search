@@ -1,7 +1,6 @@
 package com.seagull.agnesearch.ui.history
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,16 +9,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -66,16 +65,12 @@ fun SettingsScreen(onBack: () -> Unit) {
             title = "接口设置",
             onBack = onBack,
             actions = {
-                androidx.compose.material3.IconButton(onClick = {
+                IconButton(onClick = {
                     save { AppSettings() }
                     Http.applyProxy("")
                     testResult = "已恢复默认配置"
                 }) {
-                    androidx.compose.material3.Icon(
-                        Icons.Filled.Refresh,
-                        contentDescription = "恢复默认",
-                        tint = br.textSecondary,
-                    )
+                    Icon(Icons.Filled.Refresh, contentDescription = "恢复默认", tint = br.textSecondary)
                 }
             },
         )
@@ -90,45 +85,77 @@ fun SettingsScreen(onBack: () -> Unit) {
             // ── 接口 ────────────────────────────────────────────────
             SectionTitle("接口", "OpenAI 兼容")
             GlassCard(corner = 20, padding = 14) {
+                FieldLabel("Base URL", "Agnes 默认 https://apihub.agnes-ai.com/v1")
+                TextInput(
+                    value = cfg.baseUrl,
+                    onValueChange = { v -> save { it.copy(baseUrl = v) } },
+                    placeholder = AppSettings.DEFAULT_BASE_URL,
+                )
+
+                FieldLabel("API Key", "在 Agnes 控制台创建，只存在本机")
+                TextInput(
+                    value = cfg.apiKey,
+                    onValueChange = { v -> save { it.copy(apiKey = v) } },
+                    placeholder = "sk-...",
+                    password = true,
+                )
+
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .background(br.accent, RoundedCornerShape(12.dp))
+                            .clickable(enabled = !testing) {
+                                testing = true
+                                testResult = "测试中…"
+                                val snapshot = cfg
+                                scope.launch {
+                                    testResult = AgnesClient(snapshot).testConnection()
+                                    testing = false
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            if (testing) "测试中…" else "测试连接",
+                            color = br.onAccent,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    if (testResult.isNotEmpty()) {
+                        Text(
+                            testResult,
+                            color = if (testResult.startsWith("✅")) br.textPrimary else br.danger,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            // ── 对话行为 ────────────────────────────────────────────
+            SectionTitle("对话行为")
+            GlassCard(corner = 20, padding = 14) {
                 Column {
-                    FieldLabel("Base URL", "Agnes 默认 https://apihub.agnes-ai.com/v1")
-                    TextInput(
-                        value = cfg.baseUrl,
-                        onValueChange = { v -> save { it.copy(baseUrl = v) } },
-                        placeholder = AppSettings.DEFAULT_BASE_URL,
-                    )
-
-                    FieldLabel("API Key", "在 Agnes 控制台创建，只存在本机")
-                    TextInput(
-                        value = cfg.apiKey,
-                        onValueChange = { v -> save { it.copy(apiKey = v) } },
-                        placeholder = "sk-...",
-                        password = true,
-                    )
-
-                    FieldLabel("模型", "点选或自己填")
+                    FieldLabel("默认模型", "点选，或在下面自己填")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (m in AppSettings.MODELS.take(3)) {
-                            Pill(
-                                text = m.removePrefix("agnes-"),
-                                selected = cfg.model == m,
-                                onClick = {
-                                    customModel = ""
-                                    save { it.copy(model = m) }
-                                },
-                            )
+                            Pill(m.removePrefix("agnes-"), cfg.model == m) {
+                                customModel = ""
+                                save { it.copy(model = m) }
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill(
-                            text = "agnes-2.5-pro-beta",
-                            selected = cfg.model == "agnes-2.5-pro-beta",
-                            onClick = {
+                        for (m in AppSettings.MODELS.drop(3)) {
+                            Pill(m.removePrefix("agnes-"), cfg.model == m) {
                                 customModel = ""
-                                save { it.copy(model = "agnes-2.5-pro-beta") }
-                            },
-                        )
+                                save { it.copy(model = m) }
+                            }
+                        }
                     }
                     Spacer(Modifier.height(10.dp))
                     TextInput(
@@ -140,101 +167,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                         placeholder = "自定义模型名（留空用上面的）",
                     )
 
-                    Spacer(Modifier.height(14.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .background(br.accent, RoundedCornerShape(12.dp))
-                                .clickable(enabled = !testing) {
-                                    testing = true
-                                    testResult = "测试中…"
-                                    val snapshot = cfg
-                                    scope.launch {
-                                        val r = AgnesClient(snapshot).testConnection()
-                                        testResult = r
-                                        testing = false
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Text(
-                                if (testing) "测试中…" else "测试连接",
-                                color = br.onAccent,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        if (testResult.isNotEmpty()) {
-                            Text(
-                                testResult,
-                                color = if (testResult.startsWith("✅")) br.textPrimary else br.danger,
-                                fontSize = 11.sp,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 搜索 ────────────────────────────────────────────────
-            SectionTitle("搜索源", "无需额外 Key")
-            GlassCard(corner = 20, padding = 14) {
-                Column {
-                    Text(
-                        "App 自己抓公开搜索页，不依赖第三方搜索 API。国内网络建议留「自动」。",
-                        color = br.textSecondary,
-                        fontSize = 11.sp,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill("自动", cfg.searchProvider == "auto") { save { it.copy(searchProvider = "auto") } }
-                        Pill("百度", cfg.searchProvider == "baidu") { save { it.copy(searchProvider = "baidu") } }
-                        Pill("Bing", cfg.searchProvider == "bing") { save { it.copy(searchProvider = "bing") } }
-                        Pill("DDG", cfg.searchProvider == "duckduckgo") { save { it.copy(searchProvider = "duckduckgo") } }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill("SearXNG", cfg.searchProvider == "searxng") { save { it.copy(searchProvider = "searxng") } }
-                    }
-
-                    FieldLabel("SearXNG 实例地址", "填了之后「自动」会优先用它，需实例开启 format=json")
-                    TextInput(
-                        value = cfg.searxUrl,
-                        onValueChange = { v -> save { it.copy(searxUrl = v) } },
-                        placeholder = "https://searx.example.com",
-                    )
-
                     SliderRow(
-                        label = "每次结果数",
-                        value = cfg.maxResults.toFloat(),
-                        range = 3f..20f,
-                        steps = 16,
-                        display = cfg.maxResults.toString(),
-                        onChange = { v -> save { it.copy(maxResults = v.toInt()) } },
-                    )
-                    SliderRow(
-                        label = "自动阅读网页数",
-                        value = cfg.fetchPages.toFloat(),
-                        range = 0f..6f,
-                        steps = 5,
-                        display = if (cfg.fetchPages == 0) "关闭" else cfg.fetchPages.toString(),
-                        onChange = { v -> save { it.copy(fetchPages = v.toInt()) } },
-                    )
-                }
-            }
-
-            // ── Agent ───────────────────────────────────────────────
-            SectionTitle("Agent 行为")
-            GlassCard(corner = 20, padding = 14) {
-                Column {
-                    SliderRow(
-                        label = "最多检索轮次",
-                        value = cfg.maxRounds.toFloat(),
-                        range = 1f..6f,
-                        steps = 4,
-                        display = cfg.maxRounds.toString(),
-                        onChange = { v -> save { it.copy(maxRounds = v.toInt()) } },
+                        label = "上下文条数",
+                        value = cfg.contextLimit.toFloat(),
+                        range = 2f..50f,
+                        steps = 23,
+                        display = cfg.contextLimit.toString(),
+                        onChange = { v -> save { it.copy(contextLimit = v.toInt()) } },
                     )
                     SliderRow(
                         label = "温度",
@@ -259,7 +198,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                         checked = cfg.thinking,
                         onChange = { v -> save { it.copy(thinking = v) } },
                     )
-                    FieldLabel("自定义系统提示", "留空用内置的搜索 Agent 提示词")
+                    SwitchRow(
+                        label = "流式输出",
+                        desc = "关掉就等完整回复一次性出现",
+                        checked = cfg.stream,
+                        onChange = { v -> save { it.copy(stream = v) } },
+                    )
+                    FieldLabel("自定义系统提示", "留空用内置的通用助手提示")
                     TextInput(
                         value = cfg.systemPrompt,
                         onValueChange = { v -> save { it.copy(systemPrompt = v) } },
@@ -284,7 +229,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                             )
                         }
                     }
-                    FieldLabel("默认尺寸档位", "2.5 / 2.1 支持 1K-4K；2.0 会自动转成精确尺寸")
+                    FieldLabel("默认尺寸档位", "2.5 / 2.1 支持 1K-4K；2.0 自动换算成精确尺寸")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (sz in AppSettings.IMAGE_SIZES) {
                             Pill(sz, cfg.imageSize == sz) { save { it.copy(imageSize = sz) } }
@@ -351,7 +296,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(6.dp))
                     SwitchRow(
                         label = "完成后自动存相册",
-                        desc = "视频体积大，默认关闭；在任务卡片里手动保存也行",
+                        desc = "视频体积大，默认关闭；任务卡片里也能手动保存",
                         checked = cfg.autoSaveVideo,
                         onChange = { v -> save { it.copy(autoSaveVideo = v) } },
                     )
@@ -372,7 +317,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         placeholder = "http://127.0.0.1:7890",
                     )
                     Text(
-                        "请求模型接口和抓取搜索结果都会走这个代理。",
+                        "所有请求都会走这个代理。",
                         color = br.textSecondary,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(top = 6.dp),

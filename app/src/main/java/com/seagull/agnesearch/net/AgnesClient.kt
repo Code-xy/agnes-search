@@ -70,6 +70,60 @@ class AgnesClient(private val settings: AppSettings) {
             return@flow
         }
 
+        // 非流式：一次性拿完整回复
+        if (!settings.stream) {
+            val body = buildJsonObject {
+                put("model", settings.model)
+                put("messages", messages)
+                put("temperature", settings.temperature)
+                put("max_tokens", settings.maxTokens)
+                if (tools != null && tools.isNotEmpty()) {
+                    put("tools", tools)
+                    put("tool_choice", "auto")
+                }
+                if (settings.thinking) {
+                    put("chat_template_kwargs", buildJsonObject { put("enable_thinking", true) })
+                }
+            }
+            val r = Request.Builder()
+                .url(endpoint("chat/completions"))
+                .header("Authorization", "Bearer " + settings.apiKey.trim())
+                .header("Content-Type", "application/json")
+                .post(body.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .build()
+            try {
+                Http.client().newCall(r).execute().use { resp ->
+                    val text = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) {
+                        emit(StreamEvent.Failure(describeError(resp.code, text)))
+                        return@flow
+                    }
+                    val o = json.parseToJsonElement(text).jsonObject
+                    val ch = (o["choices"] as? JsonArray)?.firstOrNull()?.jsonObject
+                    val msg = ch?.get("message") as? JsonObject
+                    val content = msg?.get("content")?.jsonPrimitive?.contentOrNull
+                        ?: msg?.get("reasoning_content")?.jsonPrimitive?.contentOrNull
+                        ?: ""
+                    val u = o["usage"] as? JsonObject
+                    val pt = u?.get("prompt_tokens")?.jsonPrimitive?.intOrNull
+                        ?: u?.get("input_tokens")?.jsonPrimitive?.intOrNull ?: 0
+                    val ct = u?.get("completion_tokens")?.jsonPrimitive?.intOrNull
+                        ?: u?.get("output_tokens")?.jsonPrimitive?.intOrNull ?: 0
+                    if (content.isNotEmpty()) emit(StreamEvent.Text(content))
+                    emit(
+                        StreamEvent.Completed(
+                            pt,
+                            ct,
+                            ch?.get("finish_reason")?.jsonPrimitive?.contentOrNull ?: "stop",
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                emit(StreamEvent.Failure("网络异常：" + (e.message ?: e.javaClass.simpleName)))
+            }
+            return@flow
+        }
+
         val payload = buildJsonObject {
             put("model", settings.model)
             put("messages", messages)

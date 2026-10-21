@@ -17,10 +17,10 @@ object Store {
 
     private const val SP_NAME = "agnes_search"
     private const val K_SETTINGS = "settings"
-    private const val K_SESSIONS = "sessions"
+    private const val K_CHATS = "chats"
     private const val K_USAGE = "usage"
     private const val K_CREATIONS = "creations"
-    private const val MAX_SESSIONS = 200
+    private const val MAX_CHATS = 200
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -33,8 +33,8 @@ object Store {
     private val _settings = MutableStateFlow(AppSettings())
     val settings: StateFlow<AppSettings> = _settings
 
-    private val _sessions = MutableStateFlow<List<Session>>(emptyList())
-    val sessions: StateFlow<List<Session>> = _sessions
+    private val _chats = MutableStateFlow<List<Chat>>(emptyList())
+    val chats: StateFlow<List<Chat>> = _chats
 
     private val _usage = MutableStateFlow(UsageStat())
     val usage: StateFlow<UsageStat> = _usage
@@ -47,9 +47,9 @@ object Store {
         val p = context.applicationContext.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE)
         sp = p
         _settings.value = readJson(p.getString(K_SETTINGS, null), AppSettings.serializer()) ?: AppSettings()
-        _sessions.value = readJson(
-            p.getString(K_SESSIONS, null),
-            ListSerializer(Session.serializer())
+        _chats.value = readJson(
+            p.getString(K_CHATS, null),
+            ListSerializer(Chat.serializer())
         ) ?: emptyList()
         _usage.value = readJson(p.getString(K_USAGE, null), UsageStat.serializer()) ?: UsageStat()
         _creations.value = readJson(
@@ -89,30 +89,36 @@ object Store {
 
     // ── 会话 ────────────────────────────────────────────────────────────
 
-    fun addSession(session: Session): Session {
-        val list = (_sessions.value.filterNot { it.id == session.id } + session)
-            .sortedByDescending { it.createdAt }
-            .take(MAX_SESSIONS)
-        _sessions.value = list
-        write(K_SESSIONS, list, ListSerializer(Session.serializer()))
-        return session
+    fun addChat(chat: Chat): Chat {
+        val list = (_chats.value.filterNot { it.id == chat.id } + chat)
+            .sortedByDescending { it.updatedAt }
+            .take(MAX_CHATS)
+        _chats.value = list
+        write(K_CHATS, list, ListSerializer(Chat.serializer()))
+        return chat
     }
 
-    fun toggleStar(id: String) {
-        val list = _sessions.value.map { if (it.id == id) it.copy(starred = !it.starred) else it }
-        _sessions.value = list
-        write(K_SESSIONS, list, ListSerializer(Session.serializer()))
+    fun updateChat(id: String, block: (Chat) -> Chat) {
+        val list = _chats.value.map {
+            if (it.id == id) block(it).copy(updatedAt = System.currentTimeMillis()) else it
+        }.sortedByDescending { it.updatedAt }
+        _chats.value = list
+        write(K_CHATS, list, ListSerializer(Chat.serializer()))
     }
 
-    fun deleteSession(id: String) {
-        val list = _sessions.value.filterNot { it.id == id }
-        _sessions.value = list
-        write(K_SESSIONS, list, ListSerializer(Session.serializer()))
+    fun toggleChatStar(id: String) {
+        updateChat(id) { it.copy(starred = !it.starred) }
     }
 
-    fun clearSessions() {
-        _sessions.value = emptyList()
-        write(K_SESSIONS, emptyList<Session>(), ListSerializer(Session.serializer()))
+    fun deleteChat(id: String) {
+        val list = _chats.value.filterNot { it.id == id }
+        _chats.value = list
+        write(K_CHATS, list, ListSerializer(Chat.serializer()))
+    }
+
+    fun clearChats() {
+        _chats.value = emptyList()
+        write(K_CHATS, emptyList<Chat>(), ListSerializer(Chat.serializer()))
     }
 
     // ── 生成记录（图像 / 视频）────────────────────────────────────────────
@@ -148,13 +154,13 @@ object Store {
 
     // ── 用量 ────────────────────────────────────────────────────────────
 
-    fun addUsage(promptTokens: Int, completionTokens: Int, searches: Int = 0) {
+    fun addUsage(promptTokens: Int, completionTokens: Int, messages: Int = 0) {
         val cur = _usage.value
         val next = cur.copy(
             calls = cur.calls + 1,
+            messages = cur.messages + messages,
             promptTokens = cur.promptTokens + promptTokens,
             completionTokens = cur.completionTokens + completionTokens,
-            searches = cur.searches + searches,
             firstUseAt = if (cur.firstUseAt == 0L) System.currentTimeMillis() else cur.firstUseAt,
         )
         _usage.value = next

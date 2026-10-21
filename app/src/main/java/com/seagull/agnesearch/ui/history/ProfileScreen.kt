@@ -54,7 +54,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
     val br = brand
     val usage by Store.usage.collectAsState()
     val settings by Store.settings.collectAsState()
-    val sessions by Store.sessions.collectAsState()
+    val chats by Store.chats.collectAsState()
     val creations by Store.creations.collectAsState()
     var showAbout by remember { mutableStateOf(false) }
 
@@ -110,14 +110,14 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
             GlassCard(corner = 20, padding = 16) {
                 Column {
                     Row {
-                        StatCell("搜索次数", usage.searches.toString(), Modifier.weight(1f))
+                        StatCell("对话消息", usage.messages.toString(), Modifier.weight(1f))
                         StatCell("生成图像", usage.images.toString(), Modifier.weight(1f))
                         StatCell("生成视频", usage.videos.toString(), Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(14.dp))
                     Row {
                         StatCell("模型调用", usage.calls.toString(), Modifier.weight(1f))
-                        StatCell("搜索记录", sessions.size.toString(), Modifier.weight(1f))
+                        StatCell("会话数", chats.size.toString(), Modifier.weight(1f))
                         StatCell("创作记录", creations.size.toString(), Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(14.dp))
@@ -148,8 +148,8 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
                         Store.resetUsage()
                     }
                     ThinDivider()
-                    MenuRow(Icons.Filled.Delete, "清空历史记录", sessions.size.toString() + " 条") {
-                        Store.clearSessions()
+                    MenuRow(Icons.Filled.Delete, "清空全部记录", chats.size.toString() + " 会话 · " + creations.size + " 创作") {
+                        Store.clearChats()
                         Store.clearCreations()
                     }
                     ThinDivider()
@@ -201,9 +201,9 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
             text = {
                 Text(
                     "版本 v" + BuildConfig.VERSION_NAME + "\n\n" +
-                        "一个会自己联网查资料、读原文、带引用作答的搜索 Agent，顺带能生成图像和视频。\n" +
+                        "接入 Agnes AI（OpenAI 兼容）的对话 / 图像 / 视频客户端，接口全部可自配。\n" +
                         "默认接入 Agnes AI（OpenAI 兼容），端点与 Key 均可在设置里改成任意兼容服务。\n\n" +
-                        "搜索能力由 App 内置多引擎抓取（Bing / DuckDuckGo / SearXNG）提供，不需要额外搜索 Key。",
+                        "所有数据只存在本机；请求由本机直连你配置的端点。",
                     fontSize = 13.sp,
                 )
             },
