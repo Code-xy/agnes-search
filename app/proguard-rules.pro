@@ -1,0 +1,3 @@
+-dontwarn org.jsoup.**
+-keep class kotlinx.serialization.** { *; }
+-keepclassmembers class com.seagull.agnesearch.** { *; }
