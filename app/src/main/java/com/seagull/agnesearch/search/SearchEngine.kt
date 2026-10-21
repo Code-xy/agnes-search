@@ -4,6 +4,10 @@ import com.seagull.agnesearch.core.AppSettings
 import com.seagull.agnesearch.core.SourceItem
 import com.seagull.agnesearch.net.Http
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -93,7 +97,7 @@ object SearchEngine {
      * 百度对国内直连最稳，中文结果也好。
      * 结果链接多为 baidu.com/link?url=… 跳转链，浏览器和 open_url 都能自动跟随。
      */
-    private fun baidu(query: String, limit: Int): List<SourceItem> {
+    private suspend fun baidu(query: String, limit: Int): List<SourceItem> {
         val q = URLEncoder.encode(query, "UTF-8")
         val url = "https://www.baidu.com/s?wd=" + q + "&rn=20&ie=utf-8&tn=baiduhome_pg"
         val html = fetchText(url, "https://www.baidu.com/", false) ?: return emptyList()
@@ -115,7 +119,41 @@ object SearchEngine {
             out.add(SourceItem(rawTitle, href, sn, "百度"))
             if (out.size >= limit) break
         }
-        return out
+        return resolveBaiduUrls(out, 6)
+    }
+
+    /**
+     * 百度给的是 baidu.com/link?url=… 跳转链。
+     * 并发地把前几条换成真实地址，失败就保留原链（浏览器照样能跳）。
+     */
+    private suspend fun resolveBaiduUrls(items: List<SourceItem>, max: Int): List<SourceItem> =
+        coroutineScope {
+            items.mapIndexed { idx, it ->
+                async {
+                    if (idx >= max || !it.url.contains("baidu.com/link")) it
+                    else {
+                        val real = withTimeoutOrNull(6000) { followRedirect(it.url) }
+                        if (real.isNullOrBlank()) it else it.copy(url = real)
+                    }
+                }
+            }.awaitAll()
+        }
+
+    private suspend fun followRedirect(url: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url(url)
+                .header("User-Agent", Http.randomUa())
+                .header("Accept", "text/html,*/*")
+                .get()
+                .build()
+            Http.client().newCall(req).execute().use { resp ->
+                val finalUrl = resp.request.url.toString()
+                if (finalUrl.contains("baidu.com/link")) null else finalUrl
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     // ── Bing ────────────────────────────────────────────────────────────
