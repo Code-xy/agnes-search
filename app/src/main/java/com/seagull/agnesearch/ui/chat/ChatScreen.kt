@@ -250,9 +250,7 @@ fun ChatScreen(
                         textStyle = TextStyle(color = br.textPrimary, fontSize = 15.sp),
                         cursorBrush = SolidColor(br.accent),
                         maxLines = 5,
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = if (Store.settings.value.stream) ImeAction.Default else ImeAction.Send
-                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

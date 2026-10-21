@@ -66,7 +66,7 @@ object Http {
         return b.build()
     }
 
-    /** 带 UA 的 GET，搜索引擎抓取用。 */
+    /** 带随机 UA 的 GET。 */
     fun get(url: String, referer: String? = null): Request {
         val b = Request.Builder()
             .url(url)

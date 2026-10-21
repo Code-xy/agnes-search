@@ -142,7 +142,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
             SectionTitle("设置")
             GlassCard(corner = 20, padding = 4) {
                 Column {
-                    MenuRow(Icons.Filled.Settings, "接口设置", "端点 / Key / 模型 / 搜索源", onOpenSettings)
+                    MenuRow(Icons.Filled.Settings, "接口设置", "端点 / Key / 模型 / 参数", onOpenSettings)
                     ThinDivider()
                     MenuRow(Icons.Filled.Refresh, "清空用量统计", "只清计数，不动历史") {
                         Store.resetUsage()
@@ -197,11 +197,11 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
     if (showAbout) {
         AlertDialog(
             onDismissRequest = { showAbout = false },
-            title = { Text("Agnes 搜索") },
+            title = { Text("Agnes 客户端") },
             text = {
                 Text(
                     "版本 v" + BuildConfig.VERSION_NAME + "\n\n" +
-                        "接入 Agnes AI（OpenAI 兼容）的对话 / 图像 / 视频客户端，接口全部可自配。\n" +
+                        "接入 Agnes AI（OpenAI 兼容）的对话 / 图像 / 视频客户端，端点与 Key 全部可自配。\n" +
                         "默认接入 Agnes AI（OpenAI 兼容），端点与 Key 均可在设置里改成任意兼容服务。\n\n" +
                         "所有数据只存在本机；请求由本机直连你配置的端点。",
                     fontSize = 13.sp,
