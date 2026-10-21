@@ -62,9 +62,11 @@ import androidx.compose.ui.unit.sp
 import com.seagull.agnesearch.core.ChatMessage
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.ui.components.GlassCard
+import com.seagull.agnesearch.ui.components.ImageSourceSheet
 import com.seagull.agnesearch.ui.components.LoadingDots
 import com.seagull.agnesearch.ui.components.MarkdownText
 import com.seagull.agnesearch.ui.components.RemoteImage
+import com.seagull.agnesearch.ui.components.rememberImageSourcePicker
 import com.seagull.agnesearch.ui.components.oneLine
 import com.seagull.agnesearch.ui.theme.brand
 import com.seagull.agnesearch.util.ImagePicker
@@ -78,8 +80,6 @@ fun ChatScreen(
     onOpenSettings: () -> Unit,
 ) {
     val br = brand
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val focus = LocalFocusManager.current
 
@@ -88,16 +88,8 @@ fun ChatScreen(
     val messages = chat?.messages ?: emptyList()
     var showChatList by remember { mutableStateOf(false) }
 
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            scope.launch {
-                val data = withContext(Dispatchers.IO) { ImagePicker.toDataUri(ctx, uri, 1024, 82) }
-                if (data != null) vm.addImage(data)
-            }
-        }
-    }
+    var showImgSheet by remember { mutableStateOf(false) }
+    val imgSrc = rememberImageSourcePicker(maxDim = 1024, quality = 82) { d -> vm.addImage(d) }
 
     val lastIndex = messages.size + (if (vm.streaming) 1 else 0)
     LaunchedEffect(lastIndex, vm.streamText.length) {
@@ -233,7 +225,7 @@ fun ChatScreen(
                     .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                IconButton(onClick = { picker.launch("image/*") }, modifier = Modifier.size(38.dp)) {
+                IconButton(onClick = { showImgSheet = true }, modifier = Modifier.size(38.dp)) {
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = "加图片",
@@ -280,6 +272,20 @@ fun ChatScreen(
                 }
             }
         }
+    }
+
+    if (showImgSheet) {
+        ImageSourceSheet(
+            onCamera = {
+                imgSrc.takePhoto()
+                showImgSheet = false
+            },
+            onGallery = {
+                imgSrc.pickGallery()
+                showImgSheet = false
+            },
+            onDismiss = { showImgSheet = false },
+        )
     }
 
     if (showChatList) {

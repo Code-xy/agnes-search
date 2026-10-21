@@ -53,12 +53,14 @@ import com.seagull.agnesearch.core.Creation
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.ui.components.FieldLabel
 import com.seagull.agnesearch.ui.components.GlassCard
+import com.seagull.agnesearch.ui.components.ImageSourceSheet
 import com.seagull.agnesearch.ui.components.LoadingDots
 import com.seagull.agnesearch.ui.components.Pill
 import com.seagull.agnesearch.ui.components.RemoteImage
 import com.seagull.agnesearch.ui.components.SectionTitle
 import com.seagull.agnesearch.ui.components.TextInput
 import com.seagull.agnesearch.ui.components.ThinDivider
+import com.seagull.agnesearch.ui.components.rememberImageSourcePicker
 import com.seagull.agnesearch.util.ImagePicker
 import com.seagull.agnesearch.ui.theme.brand
 import kotlinx.coroutines.Dispatchers
@@ -71,28 +73,17 @@ fun CreateScreen(
     onOpenSettings: () -> Unit,
 ) {
     val br = brand
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     var tab by remember { mutableStateOf("image") }
     var viewing by remember { mutableStateOf<Creation?>(null) }
 
-    // 一个选择器伺候所有入口
-    var onPicked by remember { mutableStateOf<((String) -> Unit)?>(null) }
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val target = onPicked
-            scope.launch {
-                val data = withContext(Dispatchers.IO) { ImagePicker.toDataUri(ctx, uri) }
-                if (data != null) target?.invoke(data)
-            }
-        }
-    }
+    // 一个来源选择器伺候所有入口（拍照 / 相册）
+    var pending by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    var showSheet by remember { mutableStateOf(false) }
+    val imgSrc = rememberImageSourcePicker { d -> pending?.invoke(d) }
 
     fun pick(handler: (String) -> Unit) {
-        onPicked = handler
-        picker.launch("image/*")
+        pending = handler
+        showSheet = true
     }
 
     val creations by Store.creations.collectAsState()
@@ -160,6 +151,20 @@ fun CreateScreen(
                 }
             }
         }
+    }
+
+    if (showSheet) {
+        ImageSourceSheet(
+            onCamera = {
+                imgSrc.takePhoto()
+                showSheet = false
+            },
+            onGallery = {
+                imgSrc.pickGallery()
+                showSheet = false
+            },
+            onDismiss = { showSheet = false },
+        )
     }
 
     val v = viewing

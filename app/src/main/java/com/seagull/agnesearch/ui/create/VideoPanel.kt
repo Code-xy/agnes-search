@@ -280,7 +280,7 @@ private fun PickButton(onClick: () -> Unit) {
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        Text("相册", color = br.chipText, fontSize = 13.sp)
+        Text("图片", color = br.chipText, fontSize = 13.sp)
     }
 }
 
