@@ -19,6 +19,7 @@ object Store {
     private const val K_SETTINGS = "settings"
     private const val K_SESSIONS = "sessions"
     private const val K_USAGE = "usage"
+    private const val K_CREATIONS = "creations"
     private const val MAX_SESSIONS = 200
 
     private val json = Json {
@@ -38,6 +39,9 @@ object Store {
     private val _usage = MutableStateFlow(UsageStat())
     val usage: StateFlow<UsageStat> = _usage
 
+    private val _creations = MutableStateFlow<List<Creation>>(emptyList())
+    val creations: StateFlow<List<Creation>> = _creations
+
     fun init(context: Context) {
         if (sp != null) return
         val p = context.applicationContext.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE)
@@ -48,6 +52,10 @@ object Store {
             ListSerializer(Session.serializer())
         ) ?: emptyList()
         _usage.value = readJson(p.getString(K_USAGE, null), UsageStat.serializer()) ?: UsageStat()
+        _creations.value = readJson(
+            p.getString(K_CREATIONS, null),
+            ListSerializer(Creation.serializer())
+        ) ?: emptyList()
     }
 
     private fun <T> readJson(text: String?, serializer: KSerializer<T>): T? {
@@ -107,6 +115,37 @@ object Store {
         write(K_SESSIONS, emptyList<Session>(), ListSerializer(Session.serializer()))
     }
 
+    // ── 生成记录（图像 / 视频）────────────────────────────────────────────
+
+    fun addCreation(c: Creation) {
+        val list = (_creations.value.filterNot { it.id == c.id } + c)
+            .sortedByDescending { it.createdAt }
+            .take(120)
+        _creations.value = list
+        write(K_CREATIONS, list, ListSerializer(Creation.serializer()))
+    }
+
+    fun updateCreation(id: String, block: (Creation) -> Creation) {
+        val list = _creations.value.map { if (it.id == id) block(it) else it }
+        _creations.value = list
+        write(K_CREATIONS, list, ListSerializer(Creation.serializer()))
+    }
+
+    fun toggleCreationStar(id: String) {
+        updateCreation(id) { it.copy(starred = !it.starred) }
+    }
+
+    fun deleteCreation(id: String) {
+        val list = _creations.value.filterNot { it.id == id }
+        _creations.value = list
+        write(K_CREATIONS, list, ListSerializer(Creation.serializer()))
+    }
+
+    fun clearCreations() {
+        _creations.value = emptyList()
+        write(K_CREATIONS, emptyList<Creation>(), ListSerializer(Creation.serializer()))
+    }
+
     // ── 用量 ────────────────────────────────────────────────────────────
 
     fun addUsage(promptTokens: Int, completionTokens: Int, searches: Int = 0) {
@@ -116,6 +155,26 @@ object Store {
             promptTokens = cur.promptTokens + promptTokens,
             completionTokens = cur.completionTokens + completionTokens,
             searches = cur.searches + searches,
+            firstUseAt = if (cur.firstUseAt == 0L) System.currentTimeMillis() else cur.firstUseAt,
+        )
+        _usage.value = next
+        write(K_USAGE, next, UsageStat.serializer())
+    }
+
+    fun bumpImages() {
+        val cur = _usage.value
+        val next = cur.copy(
+            images = cur.images + 1,
+            firstUseAt = if (cur.firstUseAt == 0L) System.currentTimeMillis() else cur.firstUseAt,
+        )
+        _usage.value = next
+        write(K_USAGE, next, UsageStat.serializer())
+    }
+
+    fun bumpVideos() {
+        val cur = _usage.value
+        val next = cur.copy(
+            videos = cur.videos + 1,
             firstUseAt = if (cur.firstUseAt == 0L) System.currentTimeMillis() else cur.firstUseAt,
         )
         _usage.value = next

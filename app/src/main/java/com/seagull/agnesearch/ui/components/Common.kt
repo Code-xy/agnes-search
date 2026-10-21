@@ -1,5 +1,10 @@
 package com.seagull.agnesearch.ui.components
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,12 +26,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -122,7 +128,7 @@ fun AppTopBar(
     ) {
         if (onBack != null) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "返回", tint = br.textPrimary)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = br.textPrimary)
             }
         } else {
             Spacer(Modifier.width(8.dp))
@@ -220,6 +226,32 @@ fun DotBadge(color: Color? = null) {
             .size(7.dp)
             .background(c, CircleShape),
     )
+}
+
+/** 三个跳动的点，做 loading 用。 */
+@Composable
+fun LoadingDots() {
+    val br = brand
+    val inf = rememberInfiniteTransition(label = "dots")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        for (i in 0..2) {
+            val a by inf.animateFloat(
+                initialValue = 0.2f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 620, delayMillis = i * 160),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "dot" + i,
+            )
+            Box(
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .size(6.dp)
+                    .background(br.accent.copy(alpha = a), CircleShape),
+            )
+        }
+    }
 }
 
 /** 圆角图标底座。 */

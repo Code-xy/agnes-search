@@ -36,12 +36,14 @@ object SearchEngine {
     suspend fun search(query: String, cfg: AppSettings): Result = withContext(Dispatchers.IO) {
         val limit = cfg.maxResults.coerceIn(3, 20)
         val order: List<String> = when (cfg.searchProvider) {
+            "baidu" -> listOf("baidu", "bing", "ddg")
             "bing" -> listOf("bing", "bing_intl", "ddg")
             "duckduckgo" -> listOf("ddg", "ddg_lite", "bing")
             "searxng" -> listOf("searxng", "bing", "ddg")
             else -> {
                 val l = mutableListOf<String>()
                 if (cfg.searxUrl.isNotBlank()) l.add("searxng")
+                l.add("baidu")
                 l.add("bing")
                 l.add("bing_intl")
                 l.add("ddg")
@@ -54,6 +56,7 @@ object SearchEngine {
         for (engine in order) {
             val items = try {
                 when (engine) {
+                    "baidu" -> baidu(query, limit)
                     "bing" -> bing(query, limit, false)
                     "bing_intl" -> bing(query, limit, true)
                     "ddg" -> duck(query, limit, false)
@@ -75,12 +78,44 @@ object SearchEngine {
     }
 
     private fun engineLabel(e: String) = when (e) {
+        "baidu" -> "百度"
         "bing" -> "Bing 中国"
         "bing_intl" -> "Bing"
         "ddg" -> "DuckDuckGo"
         "ddg_lite" -> "DuckDuckGo Lite"
         "searxng" -> "SearXNG"
         else -> e
+    }
+
+    // ── 百度 ────────────────────────────────────────────────────────────
+
+    /**
+     * 百度对国内直连最稳，中文结果也好。
+     * 结果链接多为 baidu.com/link?url=… 跳转链，浏览器和 open_url 都能自动跟随。
+     */
+    private fun baidu(query: String, limit: Int): List<SourceItem> {
+        val q = URLEncoder.encode(query, "UTF-8")
+        val url = "https://www.baidu.com/s?wd=" + q + "&rn=20&ie=utf-8&tn=baiduhome_pg"
+        val html = fetchText(url, "https://www.baidu.com/", false) ?: return emptyList()
+        val doc = Jsoup.parse(html, "https://www.baidu.com/")
+
+        val out = mutableListOf<SourceItem>()
+        for (el in doc.select("div.result, div.c-container")) {
+            val a = el.selectFirst("h3 a") ?: continue
+            val href = a.attr("href").trim()
+            val rawTitle = a.text().trim()
+            if (rawTitle.isEmpty() || href.isEmpty()) continue
+            if (!href.startsWith("http")) continue
+            var sn = el.selectFirst(".c-abstract")?.text()?.trim().orEmpty()
+            if (sn.isEmpty()) sn = el.selectFirst("[class*=content-right]")?.text()?.trim().orEmpty()
+            if (sn.isEmpty()) {
+                // 结构变了就退化成"块内文本减标题"
+                sn = el.text().replace(rawTitle, "").trim().take(220)
+            }
+            out.add(SourceItem(rawTitle, href, sn, "百度"))
+            if (out.size >= limit) break
+        }
+        return out
     }
 
     // ── Bing ────────────────────────────────────────────────────────────

@@ -55,6 +55,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
     val usage by Store.usage.collectAsState()
     val settings by Store.settings.collectAsState()
     val sessions by Store.sessions.collectAsState()
+    val creations by Store.creations.collectAsState()
     var showAbout by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -110,8 +111,14 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
                 Column {
                     Row {
                         StatCell("搜索次数", usage.searches.toString(), Modifier.weight(1f))
-                        StatCell("调用轮次", usage.calls.toString(), Modifier.weight(1f))
-                        StatCell("历史记录", sessions.size.toString(), Modifier.weight(1f))
+                        StatCell("生成图像", usage.images.toString(), Modifier.weight(1f))
+                        StatCell("生成视频", usage.videos.toString(), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Row {
+                        StatCell("模型调用", usage.calls.toString(), Modifier.weight(1f))
+                        StatCell("搜索记录", sessions.size.toString(), Modifier.weight(1f))
+                        StatCell("创作记录", creations.size.toString(), Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(14.dp))
                     ThinDivider()
@@ -143,6 +150,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
                     ThinDivider()
                     MenuRow(Icons.Filled.Delete, "清空历史记录", sessions.size.toString() + " 条") {
                         Store.clearSessions()
+                        Store.clearCreations()
                     }
                     ThinDivider()
                     MenuRow(Icons.Filled.Info, "关于", "v" + BuildConfig.VERSION_NAME) {
@@ -193,7 +201,7 @@ fun ProfileScreen(onOpenSettings: () -> Unit) {
             text = {
                 Text(
                     "版本 v" + BuildConfig.VERSION_NAME + "\n\n" +
-                        "一个会自己联网查资料、读原文、带引用作答的搜索 Agent。\n" +
+                        "一个会自己联网查资料、读原文、带引用作答的搜索 Agent，顺带能生成图像和视频。\n" +
                         "默认接入 Agnes AI（OpenAI 兼容），端点与 Key 均可在设置里改成任意兼容服务。\n\n" +
                         "搜索能力由 App 内置多引擎抓取（Bing / DuckDuckGo / SearXNG）提供，不需要额外搜索 Key。",
                     fontSize = 13.sp,

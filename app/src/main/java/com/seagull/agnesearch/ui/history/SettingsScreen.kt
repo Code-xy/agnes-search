@@ -189,8 +189,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Pill("自动", cfg.searchProvider == "auto") { save { it.copy(searchProvider = "auto") } }
+                        Pill("百度", cfg.searchProvider == "baidu") { save { it.copy(searchProvider = "baidu") } }
                         Pill("Bing", cfg.searchProvider == "bing") { save { it.copy(searchProvider = "bing") } }
                         Pill("DDG", cfg.searchProvider == "duckduckgo") { save { it.copy(searchProvider = "duckduckgo") } }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Pill("SearXNG", cfg.searchProvider == "searxng") { save { it.copy(searchProvider = "searxng") } }
                     }
 
@@ -262,6 +266,94 @@ fun SettingsScreen(onBack: () -> Unit) {
                         placeholder = "留空即可",
                         singleLine = false,
                         maxLines = 5,
+                    )
+                }
+            }
+
+            // ── 图像生成 ────────────────────────────────────────────
+            SectionTitle("图像生成", "agnes-image-*")
+            GlassCard(corner = 20, padding = 14) {
+                Column {
+                    FieldLabel("默认模型")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (m in AppSettings.IMAGE_MODELS) {
+                            Pill(
+                                text = m.removePrefix("agnes-image-").removeSuffix("-flash"),
+                                selected = cfg.imageModel == m,
+                                onClick = { save { it.copy(imageModel = m) } },
+                            )
+                        }
+                    }
+                    FieldLabel("默认尺寸档位", "2.5 / 2.1 支持 1K-4K；2.0 会自动转成精确尺寸")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (sz in AppSettings.IMAGE_SIZES) {
+                            Pill(sz, cfg.imageSize == sz) { save { it.copy(imageSize = sz) } }
+                        }
+                    }
+                    FieldLabel("默认画幅比例")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (r in AppSettings.IMAGE_RATIOS.take(4)) {
+                            Pill(r, cfg.imageRatio == r) { save { it.copy(imageRatio = r) } }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (r in AppSettings.IMAGE_RATIOS.drop(4)) {
+                            Pill(r, cfg.imageRatio == r) { save { it.copy(imageRatio = r) } }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    SwitchRow(
+                        label = "生成后自动存相册",
+                        desc = "落到 Pictures/AgnesSearch；App 内也会留一份缓存",
+                        checked = cfg.autoSaveImage,
+                        onChange = { v -> save { it.copy(autoSaveImage = v) } },
+                    )
+                }
+            }
+
+            // ── 视频生成 ────────────────────────────────────────────
+            SectionTitle("视频生成", "agnes-video-*")
+            GlassCard(corner = 20, padding = 14) {
+                Column {
+                    FieldLabel("默认模型")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (m in AppSettings.VIDEO_MODELS) {
+                            Pill(m.removePrefix("agnes-video-"), cfg.videoModel == m) {
+                                save { it.copy(videoModel = m) }
+                            }
+                        }
+                    }
+                    FieldLabel("默认分辨率")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (sz in AppSettings.VIDEO_SIZES) {
+                            Pill(sz, cfg.videoSize == sz) { save { it.copy(videoSize = sz) } }
+                        }
+                    }
+                    FieldLabel("默认画幅")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (a in AppSettings.VIDEO_ASPECTS.take(4)) {
+                            Pill(a, cfg.videoAspect == a) { save { it.copy(videoAspect = a) } }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (a in AppSettings.VIDEO_ASPECTS.drop(4)) {
+                            Pill(a, cfg.videoAspect == a) { save { it.copy(videoAspect = a) } }
+                        }
+                    }
+                    FieldLabel("默认时长")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (sec in AppSettings.VIDEO_SECONDS) {
+                            Pill(sec + "s", cfg.videoSeconds == sec) { save { it.copy(videoSeconds = sec) } }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    SwitchRow(
+                        label = "完成后自动存相册",
+                        desc = "视频体积大，默认关闭；在任务卡片里手动保存也行",
+                        checked = cfg.autoSaveVideo,
+                        onChange = { v -> save { it.copy(autoSaveVideo = v) } },
                     )
                 }
             }

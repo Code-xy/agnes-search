@@ -15,7 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -38,6 +39,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.ui.components.BrandBackground
+import com.seagull.agnesearch.ui.create.CreateScreen
+import com.seagull.agnesearch.ui.create.CreateViewModel
 import com.seagull.agnesearch.ui.history.HistoryScreen
 import com.seagull.agnesearch.ui.history.ProfileScreen
 import com.seagull.agnesearch.ui.history.SettingsScreen
@@ -46,7 +49,7 @@ import com.seagull.agnesearch.ui.search.SearchViewModel
 import com.seagull.agnesearch.ui.theme.AgnesTheme
 import com.seagull.agnesearch.ui.theme.brand
 
-private val TABS = listOf("home", "history", "profile")
+private val TABS = listOf("home", "create", "history", "profile")
 
 @Composable
 fun AppRoot() {
@@ -54,6 +57,7 @@ fun AppRoot() {
     AgnesTheme(mode = settings.themeMode) {
         val nav = rememberNavController()
         val vm: SearchViewModel = viewModel()
+        val cvm: CreateViewModel = viewModel()
         val entry by nav.currentBackStackEntryAsState()
         val route = entry?.destination?.route ?: "home"
         val showBar = TABS.contains(route)
@@ -68,6 +72,9 @@ fun AppRoot() {
             ) {
                 composable("home") {
                     HomeScreen(vm = vm, onOpenSettings = { nav.navigate("settings") })
+                }
+                composable("create") {
+                    CreateScreen(vm = cvm, onOpenSettings = { nav.navigate("settings") })
                 }
                 composable("history") {
                     HistoryScreen(onOpen = { s ->
@@ -122,7 +129,8 @@ private fun BottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TabItem("搜索", Icons.Filled.Search, route == "home") { onSelect("home") }
-        TabItem("历史", Icons.Filled.List, route == "history") { onSelect("history") }
+        TabItem("创作", Icons.Filled.Create, route == "create") { onSelect("create") }
+        TabItem("历史", Icons.AutoMirrored.Filled.List, route == "history") { onSelect("history") }
         TabItem("我的", Icons.Filled.Person, route == "profile") { onSelect("profile") }
     }
 }

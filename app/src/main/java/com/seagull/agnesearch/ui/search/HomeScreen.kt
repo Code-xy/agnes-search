@@ -28,7 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.seagull.agnesearch.core.SourceItem
 import com.seagull.agnesearch.ui.components.GlassCard
+import com.seagull.agnesearch.ui.components.LoadingDots
 import com.seagull.agnesearch.ui.components.MarkdownText
 import com.seagull.agnesearch.ui.components.Pill
 import com.seagull.agnesearch.ui.components.SectionTitle
@@ -239,35 +240,10 @@ private fun SearchBox(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                if (running) Icons.Filled.Close else Icons.Filled.ArrowForward,
+                if (running) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = if (running) "停止" else "搜索",
                 tint = androidx.compose.ui.graphics.Color.White,
                 modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun LoadingDots() {
-    val br = brand
-    val inf = rememberInfiniteTransition(label = "dots")
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        for (i in 0..2) {
-            val a by inf.animateFloat(
-                initialValue = 0.2f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 620, delayMillis = i * 160),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-                label = "dot$i",
-            )
-            Box(
-                modifier = Modifier
-                    .padding(end = 4.dp)
-                    .size(6.dp)
-                    .background(br.accent.copy(alpha = a), CircleShape),
             )
         }
     }

@@ -19,8 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -38,12 +38,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.seagull.agnesearch.core.Creation
 import com.seagull.agnesearch.core.Session
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.ui.components.EmptyState
 import com.seagull.agnesearch.ui.components.Pill
+import com.seagull.agnesearch.ui.components.RemoteImage
 import com.seagull.agnesearch.ui.components.TextInput
 import com.seagull.agnesearch.ui.components.oneLine
+import com.seagull.agnesearch.ui.create.ImageViewerDialog
 import com.seagull.agnesearch.ui.theme.brand
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,19 +56,23 @@ import java.util.Locale
 fun HistoryScreen(onOpen: (Session) -> Unit) {
     val br = brand
     val sessions by Store.sessions.collectAsState()
+    val creations by Store.creations.collectAsState()
     var keyword by remember { mutableStateOf("") }
-    var onlyStar by remember { mutableStateOf(false) }
+    var tab by remember { mutableStateOf("search") }
+    var viewing by remember { mutableStateOf<Creation?>(null) }
 
-    val filtered = sessions.filter { s ->
-        (!onlyStar || s.starred) &&
-            (keyword.isBlank() || s.query.contains(keyword, true) || s.answer.contains(keyword, true))
+    val mySessions = sessions.filter { s ->
+        keyword.isBlank() || s.query.contains(keyword, true) || s.answer.contains(keyword, true)
+    }
+    val myCreations = creations.filter { c ->
+        c.kind == tab && (keyword.isBlank() || c.prompt.contains(keyword, true))
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(10.dp))
         Text("历史记录", color = br.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Text(
-            "本地保存，共 ${sessions.size} 条",
+            "本地保存 · 搜索 ${sessions.size} 条 · 创作 ${creations.size} 条",
             color = br.textSecondary,
             fontSize = 12.sp,
             modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
@@ -74,42 +81,133 @@ fun HistoryScreen(onOpen: (Session) -> Unit) {
         TextInput(
             value = keyword,
             onValueChange = { keyword = it },
-            placeholder = "在自己的历史里搜",
+            placeholder = "在自己的记录里搜",
         )
 
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill("全部", !onlyStar) { onlyStar = false }
-            Pill("已收藏", onlyStar) { onlyStar = true }
+            Pill("搜索", tab == "search") { tab = "search" }
+            Pill("图像", tab == "image") { tab = "image" }
+            Pill("视频", tab == "video") { tab = "video" }
             Spacer(Modifier.weight(1f))
-            if (sessions.isNotEmpty()) {
+            if (tab == "search" && sessions.isNotEmpty()) {
                 Pill("清空") { Store.clearSessions() }
+            }
+            if (tab != "search" && creations.any { it.kind == tab }) {
+                Pill("清空") { Store.clearCreations() }
             }
         }
 
-        if (filtered.isEmpty()) {
-            EmptyState(
-                title = if (sessions.isEmpty()) "还没有记录" else "没有匹配的记录",
-                desc = if (sessions.isEmpty()) "去搜索页问一个问题试试" else "换个关键词看看",
-                icon = Icons.Filled.List,
-            )
+        if (tab == "search") {
+            if (mySessions.isEmpty()) {
+                EmptyState(
+                    title = if (sessions.isEmpty()) "还没有搜索记录" else "没有匹配的记录",
+                    desc = if (sessions.isEmpty()) "去搜索页问一个问题试试" else "换个关键词看看",
+                    icon = Icons.Filled.Search,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 110.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(mySessions, key = { it.id }) { s ->
+                        SessionCard(
+                            s = s,
+                            onOpen = { onOpen(s) },
+                            onStar = { Store.toggleStar(s.id) },
+                            onDelete = { Store.deleteSession(s.id) },
+                        )
+                    }
+                }
+            }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 110.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(filtered, key = { it.id }) { s ->
-                    SessionCard(
-                        s = s,
-                        onOpen = { onOpen(s) },
-                        onStar = { Store.toggleStar(s.id) },
-                        onDelete = { Store.deleteSession(s.id) },
-                    )
+            if (myCreations.isEmpty()) {
+                EmptyState(
+                    title = "还没有" + (if (tab == "image") "图像" else "视频") + "记录",
+                    desc = "去创作页生成一个试试",
+                    icon = Icons.AutoMirrored.Filled.List,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 110.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(myCreations, key = { it.id }) { c ->
+                        CreationCard(c = c, onOpen = { viewing = c })
+                    }
                 }
             }
         }
     }
+
+    val v = viewing
+    if (v != null) {
+        ImageViewerDialog(c = v, onClose = { viewing = null })
+    }
+}
+
+@Composable
+private fun CreationCard(c: Creation, onOpen: () -> Unit) {
+    val br = brand
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(br.card, shape)
+            .border(1.dp, br.cardBorder, shape)
+            .clickable { onOpen() }
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RemoteImage(
+            src = if (c.localPath.isNotBlank()) c.localPath else c.url,
+            modifier = Modifier.size(62.dp).background(br.codeBg, RoundedCornerShape(12.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                c.prompt.ifBlank { "（无提示词）" },
+                color = br.textPrimary,
+                fontSize = 13.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                buildString {
+                    append(c.model)
+                    if (c.size.isNotBlank()) append(" · ").append(c.size)
+                    if (c.seconds.isNotBlank()) append(" · ").append(c.seconds).append("s")
+                },
+                color = br.textSecondary,
+                fontSize = 10.sp,
+                maxLines = 1,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                statusLabel(c) + "   " + fmt(c.createdAt),
+                color = if (c.status == "failed") br.danger else br.accent,
+                fontSize = 10.sp,
+            )
+        }
+        IconButton(onClick = { Store.deleteCreation(c.id) }, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "删除",
+                tint = br.textSecondary,
+                modifier = Modifier.size(15.dp),
+            )
+        }
+    }
+}
+
+private fun statusLabel(c: Creation): String = when (c.status) {
+    "done" -> "已完成"
+    "failed" -> "失败" + (if (c.error.isNotBlank()) "：" + c.error.take(40) else "")
+    "completed" -> "已完成"
+    else -> c.status + " " + c.progress + "%"
 }
 
 @Composable
@@ -176,11 +274,7 @@ private fun SessionCard(
         }
         Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                fmt(s.createdAt),
-                color = br.textSecondary,
-                fontSize = 10.sp,
-            )
+            Text(fmt(s.createdAt), color = br.textSecondary, fontSize = 10.sp)
             if (s.sources.isNotEmpty()) {
                 Text("  ·  ${s.sources.size} 个来源", color = br.textSecondary, fontSize = 10.sp)
             }
