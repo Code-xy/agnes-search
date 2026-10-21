@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
@@ -362,12 +363,17 @@ private fun UserBubble(m: ChatMessage) {
             }
         }
         if (m.content.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .background(Brush.linearGradient(br.gradient), RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                Text(m.content, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp)
+            SelectionContainer {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            Brush.linearGradient(br.gradient),
+                            RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(m.content, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp)
+                }
             }
         }
     }
