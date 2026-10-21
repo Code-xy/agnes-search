@@ -66,7 +66,8 @@ import com.seagull.agnesearch.ui.components.ImageSourceSheet
 import com.seagull.agnesearch.ui.components.LoadingDots
 import com.seagull.agnesearch.ui.components.MarkdownText
 import com.seagull.agnesearch.ui.components.RemoteImage
-import com.seagull.agnesearch.ui.components.rememberImageSourcePicker
+import com.seagull.agnesearch.ui.components.rememberMediaPicker
+import com.seagull.agnesearch.util.FilePicker
 import com.seagull.agnesearch.ui.components.oneLine
 import com.seagull.agnesearch.ui.theme.brand
 import com.seagull.agnesearch.util.ImagePicker
@@ -89,7 +90,12 @@ fun ChatScreen(
     var showChatList by remember { mutableStateOf(false) }
 
     var showImgSheet by remember { mutableStateOf(false) }
-    val imgSrc = rememberImageSourcePicker(maxDim = 1024, quality = 82) { d -> vm.addImage(d) }
+    val media = rememberMediaPicker(
+        maxDim = 1280,
+        quality = 84,
+        onImage = { d -> vm.addImage(d) },
+        onFile = { a -> vm.addFile(a) },
+    )
 
     val lastIndex = messages.size + (if (vm.streaming) 1 else 0)
     LaunchedEffect(lastIndex, vm.streamText.length) {
@@ -186,6 +192,61 @@ fun ChatScreen(
                 )
             }
 
+            if (vm.pendingFiles.isNotEmpty()) {
+                Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                    for ((i, f) in vm.pendingFiles.withIndex()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 5.dp)
+                                .background(br.card, RoundedCornerShape(12.dp))
+                                .border(1.dp, br.cardBorder, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .background(br.chipBg, RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    f.name.substringAfterLast('.', "?").take(4),
+                                    color = br.chipText,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                )
+                            }
+                            Spacer(Modifier.width(9.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    f.name,
+                                    color = br.textPrimary,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                val sub = buildString {
+                                    append(FilePicker.formatSize(f.size))
+                                    if (f.kind == "text") append(" · 已读取正文 ").append(f.text.length).append(" 字")
+                                    if (f.note.isNotBlank()) append(" · ").append(f.note)
+                                }
+                                Text(sub, color = br.textSecondary, fontSize = 9.sp, maxLines = 2)
+                            }
+                            IconButton(onClick = { vm.removeFile(i) }, modifier = Modifier.size(26.dp)) {
+                                Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = "移除",
+                                    tint = br.textSecondary,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (vm.pendingImages.isNotEmpty()) {
                 Row(
                     modifier = Modifier.padding(bottom = 6.dp),
@@ -277,11 +338,15 @@ fun ChatScreen(
     if (showImgSheet) {
         ImageSourceSheet(
             onCamera = {
-                imgSrc.takePhoto()
+                media.takePhoto()
                 showImgSheet = false
             },
             onGallery = {
-                imgSrc.pickGallery()
+                media.pickGallery()
+                showImgSheet = false
+            },
+            onFile = {
+                media.pickFile()
                 showImgSheet = false
             },
             onDismiss = { showImgSheet = false },

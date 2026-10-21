@@ -60,7 +60,7 @@ import com.seagull.agnesearch.ui.components.RemoteImage
 import com.seagull.agnesearch.ui.components.SectionTitle
 import com.seagull.agnesearch.ui.components.TextInput
 import com.seagull.agnesearch.ui.components.ThinDivider
-import com.seagull.agnesearch.ui.components.rememberImageSourcePicker
+import com.seagull.agnesearch.ui.components.rememberMediaPicker
 import com.seagull.agnesearch.util.ImagePicker
 import com.seagull.agnesearch.ui.theme.brand
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +79,7 @@ fun CreateScreen(
     // 一个来源选择器伺候所有入口（拍照 / 相册）
     var pending by remember { mutableStateOf<((String) -> Unit)?>(null) }
     var showSheet by remember { mutableStateOf(false) }
-    val imgSrc = rememberImageSourcePicker { d -> pending?.invoke(d) }
+    val media = rememberMediaPicker(onImage = { d -> pending?.invoke(d) }, onFile = { })
 
     fun pick(handler: (String) -> Unit) {
         pending = handler
@@ -156,11 +156,11 @@ fun CreateScreen(
     if (showSheet) {
         ImageSourceSheet(
             onCamera = {
-                imgSrc.takePhoto()
+                media.takePhoto()
                 showSheet = false
             },
             onGallery = {
-                imgSrc.pickGallery()
+                media.pickGallery()
                 showSheet = false
             },
             onDismiss = { showSheet = false },

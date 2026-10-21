@@ -6,11 +6,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.seagull.agnesearch.core.AppSettings
+import com.seagull.agnesearch.core.Attachment
 import com.seagull.agnesearch.core.Chat
 import com.seagull.agnesearch.core.ChatMessage
 import com.seagull.agnesearch.core.Store
 import com.seagull.agnesearch.net.AgnesClient
 import com.seagull.agnesearch.net.StreamEvent
+import com.seagull.agnesearch.util.FilePicker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -31,6 +33,10 @@ class ChatViewModel : ViewModel() {
     var pendingImages by mutableStateOf<List<String>>(emptyList())
         private set
 
+    /** 待发送的附件（代码 / 文本 / 图片元信息） */
+    var pendingFiles by mutableStateOf<List<Attachment>>(emptyList())
+        private set
+
     var streaming by mutableStateOf(false)
         private set
 
@@ -49,6 +55,7 @@ class ChatViewModel : ViewModel() {
         currentId = null
         draft = ""
         pendingImages = emptyList()
+        pendingFiles = emptyList()
         streamText = ""
         streaming = false
         error = ""
@@ -57,6 +64,7 @@ class ChatViewModel : ViewModel() {
     fun open(id: String) {
         job?.cancel()
         currentId = id
+        pendingFiles = emptyList()
         streamText = ""
         streaming = false
         error = ""
@@ -71,10 +79,23 @@ class ChatViewModel : ViewModel() {
         pendingImages = pendingImages.filterIndexed { i, _ -> i != index }
     }
 
+    fun addFile(a: Attachment) {
+        if (a.kind == "image" && a.dataUri.isNotBlank()) {
+            pendingImages = (pendingImages + a.dataUri).take(4)
+            return
+        }
+        if (pendingFiles.size >= 5) return
+        pendingFiles = (pendingFiles + a).take(5)
+    }
+
+    fun removeFile(index: Int) {
+        pendingFiles = pendingFiles.filterIndexed { i, _ -> i != index }
+    }
+
     fun send() {
         val text = draft.trim()
         if (streaming) return
-        if (text.isEmpty() && pendingImages.isEmpty()) return
+        if (text.isEmpty() && pendingImages.isEmpty() && pendingFiles.isEmpty()) return
 
         val cfg = Store.settings.value
         if (cfg.apiKey.isBlank()) {
@@ -95,11 +116,29 @@ class ChatViewModel : ViewModel() {
             currentId = chat.id
         }
 
+        val attachedFiles = pendingFiles
+        val textFiles = attachedFiles.filter { it.kind == "text" && it.text.isNotBlank() }
+        val others = attachedFiles.filter { it.kind == "other" }
+        val content = buildString {
+            if (text.isNotEmpty()) append(text)
+            for (f in textFiles) {
+                if (isNotEmpty()) append("\n\n")
+                append(FilePicker.asPromptBlock(f))
+            }
+            if (others.isNotEmpty()) {
+                if (isNotEmpty()) append("\n\n")
+                append("（以下文件接口不支持解析，未发送内容：")
+                append(others.joinToString("、") { it.name })
+                append("）")
+            }
+        }
+
         val userMsg = ChatMessage(
             id = Store.newId(),
             role = "user",
-            content = text,
+            content = content,
             images = pendingImages,
+            files = attachedFiles,
             createdAt = System.currentTimeMillis(),
         )
         val history = chat.messages + userMsg
@@ -113,6 +152,7 @@ class ChatViewModel : ViewModel() {
         }
         draft = ""
         pendingImages = emptyList()
+        pendingFiles = emptyList()
         error = ""
         runCompletion(chatId, history)
     }

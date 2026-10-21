@@ -71,6 +71,20 @@ data class AppSettings(
     }
 }
 
+/** 消息里的附件。 */
+@Serializable
+data class Attachment(
+    val id: String = "",
+    val name: String,
+    val size: Long = 0L,
+    /** text（代码/纯文本，内容已读出来）| image（data URI）| other（接口不支持，只留元信息） */
+    val kind: String = "text",
+    val text: String = "",
+    val dataUri: String = "",
+    val mime: String = "",
+    val note: String = "",
+)
+
 /** 聊天里的一条消息。 */
 @Serializable
 data class ChatMessage(
@@ -80,6 +94,7 @@ data class ChatMessage(
     val content: String = "",
     /** data URI 或公网 URL，多模态图像输入 */
     val images: List<String> = emptyList(),
+    val files: List<Attachment> = emptyList(),
     val model: String = "",
     val promptTokens: Int = 0,
     val completionTokens: Int = 0,

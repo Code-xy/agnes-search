@@ -28,6 +28,18 @@ object ImagePicker {
         }
     }
 
+    /** 相机缩略图（TakePicturePreview 返回 Bitmap）转 Data URI。 */
+    fun bitmapToDataUri(bitmap: Bitmap, maxDim: Int = 1280, quality: Int = 88): String? {
+        return try {
+            val scaled = scale(bitmap, maxDim)
+            val bos = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, quality, bos)
+            "data:image/jpeg;base64," + Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun scale(src: Bitmap, maxDim: Int): Bitmap {
         val w = src.width
         val h = src.height
